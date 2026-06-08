@@ -1,0 +1,18 @@
+{
+  "name": "প্রিপেইড মিটার টোকেন সহকারী",
+  "short_name": "টোকেন সহকারী",
+  "description": "একাধিক টোকেন সম্বলিত SMS থেকে সঠিক টোকেন খুঁজে বের করুন এবং সঠিক ক্রমে মিটারে ইনপুট দিন।",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FB",
+  "theme_color": "#0B5ED7",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

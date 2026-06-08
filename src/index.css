@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-canvas text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  min-height: 100vh;
+  font-family: system-ui, 'Segoe UI', 'Noto Sans Bengali', sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(11, 94, 215, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(25, 135, 84, 0.12), transparent 24%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(11, 94, 215, 0.18);
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    break-inside: avoid;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
