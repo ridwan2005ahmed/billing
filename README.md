@@ -17,12 +17,13 @@
 - SMS থেকে স্বয়ংক্রিয় টোকেন এক্সট্রাকশন
 - comma, space, newline, এবং mixed format সাপোর্ট
 - sequence-based token recommendation
-- token copy, copy all, share, print, PDF export
+- token copy, print, PDF export
 - dark mode
 - install prompt
 - offline caching
 - history storage in LocalStorage
 - accessibility-friendly large touch targets
+- simple, beginner-friendly workflow
 
 ## লোকাল রান
 
@@ -74,6 +75,12 @@ Successful!Your BPDBprepaid Prepaid Token is 1960-2031-1264-1251-2016,0255-0413-
 ```
 
 এই SMS-এ valid ২০-ডিজিট token গুলো আলাদা করে দেখানো হবে, incomplete token-এ validation warning দেখা যাবে, এবং sequence selection অনুযায়ী next recommended token highlight হবে।
+
+## সহজ ব্যবহার
+
+1. SMS পেস্ট করুন
+2. সিকোয়েন্স নম্বর নির্বাচন করুন
+3. প্রস্তাবিত টোকেন কপি করে মিটারে দিন
 
 ## Notes
 

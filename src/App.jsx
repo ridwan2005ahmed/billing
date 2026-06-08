@@ -5,21 +5,14 @@ import { ToastStack } from './components/ToastStack';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useTheme } from './hooks/useTheme';
 import {
-  buildHistoryEntry,
-  formatSmsDate,
-  getNextSequence,
   getRecommendedToken,
   getReadableValidationMessages,
   getSequenceLabel,
-  getTokenNumberFromSequence,
-  TOKEN_ORDER,
   tokenizeSms,
 } from './utils/token';
 import {
   clearSmsDraft,
-  loadHistory,
   loadSmsDraft,
-  saveHistory,
   saveSmsDraft,
 } from './utils/storage';
 
@@ -36,19 +29,13 @@ function App() {
   const { canInstall, installed, promptInstall } = useInstallPrompt();
   const [smsText, setSmsText] = useState(() => loadSmsDraft());
   const [selectedSequence, setSelectedSequence] = useState('');
-  const [history, setHistory] = useState(() => loadHistory().slice(0, 10));
   const [sequenceHelpOpen, setSequenceHelpOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState('');
-  const [copiedAll, setCopiedAll] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
     saveSmsDraft(smsText);
   }, [smsText]);
-
-  useEffect(() => {
-    saveHistory(history);
-  }, [history]);
 
   const analysis = useMemo(() => tokenizeSms(smsText), [smsText]);
   const recommended = useMemo(
@@ -57,11 +44,6 @@ function App() {
   );
 
   const validationMessages = getReadableValidationMessages(analysis.warnings);
-  const currentSequenceNumber = selectedSequence === '' ? null : Number(selectedSequence);
-  const nextSequenceNumber = getNextSequence(selectedSequence);
-  const recommendedTokenNumber = getTokenNumberFromSequence(nextSequenceNumber);
-
-  const historySummary = history.length > 0 ? `${history.length} টি সংরক্ষিত রেকর্ড` : 'এখনও কোনো রেকর্ড নেই';
 
   const pushToast = (type, text) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -82,60 +64,10 @@ function App() {
     }
   };
 
-  const handleAnalyze = () => {
-    if (analysis.tokens.length === 0) {
-      pushToast('warning', 'প্রথমে বৈধ SMS থেকে টোকেন বের করুন।');
-      return;
-    }
-
-    const entry = buildHistoryEntry({
-      tokenCount: analysis.tokens.length,
-      selectedSequence: getSequenceLabel(selectedSequence),
-      recommendedToken: formatRecommendedLabel(recommended),
-    });
-
-    setHistory((current) => [entry, ...current].slice(0, 12));
-    pushToast('success', 'SMS বিশ্লেষণ সম্পন্ন হয়েছে।');
-  };
-
   const handleCopyToken = (token) => {
     setCopiedToken(token);
     copyToClipboard(token, 'টোকেন কপি হয়েছে।');
     window.setTimeout(() => setCopiedToken(''), 2000);
-  };
-
-  const handleCopyAllTokens = () => {
-    if (analysis.tokens.length === 0) {
-      pushToast('warning', 'কপি করার মতো টোকেন পাওয়া যায়নি।');
-      return;
-    }
-
-    setCopiedAll(true);
-    copyToClipboard(analysis.tokens.join('\n'), 'সব টোকেন কপি হয়েছে।');
-    window.setTimeout(() => setCopiedAll(false), 2000);
-  };
-
-  const handleShare = async () => {
-    const sharePayload = {
-      title: 'প্রিপেইড মিটার টোকেন সহকারী',
-      text: analysis.tokens.length
-        ? `টোকেন সংখ্যা: ${analysis.tokens.length}\nসিকোয়েন্স: ${getSequenceLabel(selectedSequence)}\nপ্রস্তাবিত টোকেন: ${formatRecommendedLabel(recommended)}`
-        : 'প্রিপেইড মিটার টোকেন সহকারী',
-      url: window.location.href,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(sharePayload);
-        pushToast('success', 'শেয়ার সম্পন্ন হয়েছে।');
-        return;
-      } catch {
-        pushToast('warning', 'শেয়ার বাতিল হয়েছে।');
-        return;
-      }
-    }
-
-    await copyToClipboard(sharePayload.text, 'শেয়ার তথ্য কপি করা হয়েছে।');
   };
 
   const handlePrintGuide = () => {
@@ -153,24 +85,6 @@ function App() {
       pushToast('warning', 'ইনস্টল প্রম্পট এখন উপলব্ধ নয়।');
     }
   };
-
-  const scrollToSection = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const sequenceStages = TOKEN_ORDER.map((sequenceNumber) => {
-    const numericCurrent = currentSequenceNumber;
-    const isCurrent = numericCurrent !== null && sequenceNumber === numericCurrent;
-    const isNext = numericCurrent !== null && sequenceNumber === nextSequenceNumber;
-    const isCompleted = numericCurrent !== null && sequenceNumber < numericCurrent;
-
-    return {
-      sequenceNumber,
-      isCurrent,
-      isNext,
-      isCompleted,
-    };
-  });
 
   return (
     <div className="min-h-screen">
@@ -215,24 +129,10 @@ function App() {
               <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={handleAnalyze}
+                  onClick={() => pushToast('success', 'SMS পেস্ট করুন, তারপর সিকোয়েন্স নির্বাচন করুন।')}
                   className="rounded-2xl bg-primary px-5 py-4 text-base font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-[#0849ab] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
-                  SMS বিশ্লেষণ করুন
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('guide')}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:border-primary hover:text-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                >
-                  কিভাবে কাজ করে
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:border-secondary hover:text-secondary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                >
-                  শেয়ার করুন
+                  শুরু করুন
                 </button>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -241,12 +141,12 @@ function App() {
                   <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{analysis.tokens.length ? 'টোকেন প্রস্তুত' : 'SMS ইনপুট অপেক্ষায়'}</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">সংরক্ষিত ইতিহাস</p>
-                  <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{historySummary}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
                   <p className="text-sm text-slate-500 dark:text-slate-400">অফলাইন</p>
                   <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">সাপোর্টেড</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">পরামর্শ</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">সহজ ব্যবহার</p>
                 </div>
               </div>
             </div>
@@ -298,13 +198,6 @@ function App() {
                 className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-danger hover:text-danger dark:border-slate-800 dark:text-slate-200"
               >
                 ইনপুট পরিষ্কার করুন
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyAllTokens}
-                className="rounded-2xl bg-secondary px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#12663f]"
-              >
-                সব টোকেন কপি করুন
               </button>
               <button
                 type="button"
@@ -422,39 +315,12 @@ function App() {
           )}
         </SectionCard>
 
-        <SectionCard title="টোকেন অর্ডার ভিজ্যুয়ালাইজার" subtitle="বর্তমান, সম্পন্ন, পরের প্রস্তাবিত, এবং বাকি টোকেনের অবস্থা দেখুন।">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            {sequenceStages.map((stage) => {
-              const stateClass = stage.isCurrent
-                ? 'border-primary bg-primary text-white'
-                : stage.isNext
-                  ? 'border-warning bg-amber-100 text-slate-900 dark:bg-amber-400 dark:text-slate-900'
-                  : stage.isCompleted
-                    ? 'border-secondary bg-emerald-100 text-emerald-900 dark:bg-emerald-400 dark:text-slate-900'
-                    : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300';
-
-              return (
-                <div key={stage.sequenceNumber} className={`rounded-3xl border px-4 py-5 text-center shadow-sm transition ${stateClass}`}>
-                  <p className="text-sm font-semibold">সিকোয়েন্স</p>
-                  <p className="mt-2 text-3xl font-black">{stage.sequenceNumber}</p>
-                  <p className="mt-2 text-sm font-medium">
-                    {stage.isCurrent ? 'বর্তমান' : stage.isNext ? 'প্রস্তাবিত' : stage.isCompleted ? 'সম্পন্ন' : 'অবশিষ্ট'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-
-        <SectionCard id="guide" title="ধাপে ধাপে গাইড" subtitle="সঠিক টোকেন ব্যবহারের জন্য এই ধাপগুলো অনুসরণ করুন।">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SectionCard title="দ্রুত ব্যবহার" subtitle="সহজভাবে টোকেন বের করতে এই তিনটা ধাপ যথেষ্ট।">
+          <div className="grid gap-4 md:grid-cols-3">
             {[
-              'ধাপ ১: 889 + Enter চাপুন',
-              'ধাপ ২: সিকোয়েন্স নম্বর দেখুন',
-              'ধাপ ৩: প্রস্তাবিত টোকেন কপি করুন',
-              'ধাপ ৪: মিটারে 20 ডিজিট ইনপুট করুন',
-              'ধাপ ৫: Enter চাপুন',
-              'ধাপ ৬: SUCCESS দেখলে পরবর্তী টোকেন ইনপুট করুন',
+              'SMS পেস্ট করুন',
+              'সিকোয়েন্স নম্বর নির্বাচন করুন',
+              'প্রস্তাবিত টোকেন কপি করে মিটারে দিন',
             ].map((item, index) => (
               <div key={item} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <p className="text-sm font-semibold text-primary">0{index + 1}</p>
@@ -463,74 +329,16 @@ function App() {
             ))}
           </div>
         </SectionCard>
-
-        <SectionCard title="সচরাচর জিজ্ঞাসা" subtitle="প্রচলিত কিছু প্রশ্নের সহজ উত্তর।">
-          <div className="space-y-3">
-            <details className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-              <summary className="cursor-pointer text-base font-semibold text-slate-900 dark:text-white">220 ডিজিটের SMS কি একবারে ইনপুট দিতে হবে?</summary>
-              <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">না, প্রতিটি 20 ডিজিটের টোকেন আলাদা করে ইনপুট দিতে হবে।</p>
-            </details>
-            <details className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-              <summary className="cursor-pointer text-base font-semibold text-slate-900 dark:text-white">REJECT দেখালে কী করব?</summary>
-              <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">সিকোয়েন্স নম্বর ও টোকেনের ক্রম পুনরায় যাচাই করুন।</p>
-            </details>
-            <details className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-              <summary className="cursor-pointer text-base font-semibold text-slate-900 dark:text-white">889 কোড কী?</summary>
-              <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">এটি বর্তমান সিকোয়েন্স নম্বর দেখার কোড।</p>
-            </details>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="ইতিহাস" subtitle="স্থানীয়ভাবে সংরক্ষিত বিশ্লেষণের তালিকা।">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600 dark:text-slate-300">{historySummary}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setHistory([]);
-                saveHistory([]);
-                pushToast('success', 'ইতিহাস মুছে ফেলা হয়েছে।');
-              }}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-danger hover:text-danger dark:border-slate-800 dark:text-slate-200"
-            >
-              ইতিহাস মুছুন
-            </button>
-          </div>
-
-          {history.length > 0 ? (
-            <div className="space-y-3">
-              {history.map((entry) => (
-                <div key={entry.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatSmsDate(new Date(entry.date))}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">টোকেন: {entry.tokenCount}</p>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-3">
-                    <span>সিকোয়েন্স: {entry.selectedSequence}</span>
-                    <span>প্রস্তাবিত: {entry.recommendedToken}</span>
-                    <span>স্ট্যাটাস: সফল</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700 dark:text-slate-300">
-              এখানে বিশ্লেষণ সংরক্ষণ হলে ইতিহাস দেখা যাবে।
-            </div>
-          )}
-        </SectionCard>
       </main>
 
       <footer className="no-print mt-6 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-sm text-slate-600 dark:text-slate-300 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div>
             <p className="font-semibold text-slate-900 dark:text-white">প্রিপেইড মিটার টোকেন সহকারী</p>
-            <p className="mt-1">অফলাইন-প্রস্তুত PWA · LocalStorage · Bangla-first UX</p>
+            <p className="mt-1">সহজ SMS টোকেন সহায়ক · LocalStorage · Bangla-first UX</p>
             <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Made by Ridwan · 01324210035</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => scrollToSection('guide')} className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200">গাইড</button>
-            <button type="button" onClick={handleShare} className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200">শেয়ার</button>
             <button type="button" onClick={handlePrintGuide} className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200">পিডিএফ</button>
           </div>
         </div>
